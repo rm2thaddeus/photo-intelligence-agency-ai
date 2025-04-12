@@ -7,6 +7,7 @@ import rawpy
 from datetime import datetime
 from pydantic import Field, validator
 from agency_swarm.tools import BaseTool
+from qdrant_client.http.models import PointStruct
 
 # --- Import Shared Resources ---
 from .processing_utils import (
@@ -206,57 +207,42 @@ class ImageProcessor(BaseTool):
 
     def run(self) -> Dict[str, Any]:
         """
-        Process all images in input_paths:
-        1. Validate and collect image paths
-        2. Process images in batches
-        3. Generate embeddings
-        4. Store in Qdrant
-        Returns summary of processing results.
+        Process all images in input_paths and return their metadata and embeddings.
         """
-        if not model or not processor:
-            return {"status": "error", "message": "CLIP model/processor not initialized"}
-        if not qdrant_client:
-            return {"status": "error", "message": "Qdrant client not initialized"}
+        try:
+            # Validate model and processor
+            if not model or not processor:
+                return {
+                    'status': 'error',
+                    'message': 'CLIP model not initialized'
+                }
             
-        total_processed = 0
-        total_failed = 0
-        processed_paths = []
-        failed_paths = []
-        
-        # Process in batches
-        current_batch = []
-        for path in self.input_paths:
-            current_batch.append(Path(path))
+            # Process images in batches
+            all_results = []
+            for i in range(0, len(self.input_paths), self.batch_size):
+                batch_paths = [Path(p) for p in self.input_paths[i:i + self.batch_size]]
+                batch_results = self._process_batch(batch_paths)
+                all_results.extend(batch_results)
             
-            if len(current_batch) >= self.batch_size:
-                results = self._process_batch(current_batch)
-                if results:
-                    if self._upsert_to_qdrant(results):
-                        total_processed += len(results)
-                        processed_paths.extend([r['metadata']['file_path'] for r in results])
-                    else:
-                        total_failed += len(results)
-                        failed_paths.extend([r['metadata']['file_path'] for r in results])
-                current_batch = []
-        
-        # Process remaining images
-        if current_batch:
-            results = self._process_batch(current_batch)
-            if results:
-                if self._upsert_to_qdrant(results):
-                    total_processed += len(results)
-                    processed_paths.extend([r['metadata']['file_path'] for r in results])
-                else:
-                    total_failed += len(results)
-                    failed_paths.extend([r['metadata']['file_path'] for r in results])
-        
-        return {
-            "status": "success" if total_processed > 0 else "error",
-            "total_processed": total_processed,
-            "total_failed": total_failed,
-            "processed_paths": processed_paths,
-            "failed_paths": failed_paths
-        }
+            if not all_results:
+                return {
+                    'status': 'error',
+                    'message': 'No images were successfully processed'
+                }
+            
+            # Return results directly instead of storing in Qdrant
+            return {
+                'status': 'success',
+                'processed_count': len(all_results),
+                'results': all_results
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in image processing: {e}")
+            return {
+                'status': 'error',
+                'message': str(e)
+            }
 
 # Example Test Case
 if __name__ == "__main__":

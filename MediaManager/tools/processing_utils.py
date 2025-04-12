@@ -1,0 +1,76 @@
+import logging
+import os
+import torch
+from transformers import CLIPProcessor, CLIPModel
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.exceptions import UnexpectedResponse
+import time
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Constants
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+EMBEDDING_DIM = 512
+QDRANT_COLLECTION_NAME = "media_embeddings"
+
+def wait_for_qdrant(client, max_retries=5, delay=2):
+    """Wait for Qdrant to become available"""
+    for i in range(max_retries):
+        try:
+            # Simple health check
+            client.get_collections()
+            logger.info("Successfully connected to Qdrant!")
+            return True
+        except Exception as e:
+            logger.warning(f"Attempt {i+1}/{max_retries} failed: {str(e)}")
+            if i < max_retries - 1:
+                time.sleep(delay)
+    return False
+
+# Initialize CLIP model and processor
+try:
+    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    model.to(DEVICE)
+    logger.info(f"CLIP model loaded successfully on {DEVICE}")
+except Exception as e:
+    logger.error(f"Error loading CLIP model: {e}")
+    model = None
+    processor = None
+
+# Initialize Qdrant client
+try:
+    qdrant_client = QdrantClient(
+        host="localhost",
+        port=6333,
+        timeout=5.0
+    )
+    
+    # Wait for Qdrant to be available
+    if wait_for_qdrant(qdrant_client):
+        # Check if collection exists, create if it doesn't
+        try:
+            qdrant_client.get_collection(QDRANT_COLLECTION_NAME)
+        except UnexpectedResponse:
+            # Collection doesn't exist, create it
+            qdrant_client.create_collection(
+                collection_name=QDRANT_COLLECTION_NAME,
+                vectors_config=VectorParams(
+                    size=EMBEDDING_DIM,
+                    distance=Distance.COSINE
+                )
+            )
+            logger.info(f"Created Qdrant collection: {QDRANT_COLLECTION_NAME}")
+    else:
+        logger.error("Failed to connect to Qdrant")
+        qdrant_client = None
+except Exception as e:
+    logger.error(f"Error initializing Qdrant client: {e}")
+    qdrant_client = None 

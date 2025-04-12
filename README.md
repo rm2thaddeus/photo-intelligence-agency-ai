@@ -1,15 +1,51 @@
-# 🖼️ Photo Intelligence Agency
+# MediaManager
 
-A modular, human-in-the-loop photo and video indexing service powered by AI agents. This system analyzes media content, generates embeddings, stores data in Qdrant, and creates interactive HTML galleries.
+A Python package for managing and processing media files, with support for:
+- Image processing and analysis using CLIP embeddings
+- Video processing with scene detection
+- Vector storage using Qdrant
+- File system scanning and organization
 
-## ✨ Features
+## Installation
 
-- 🤖 Multi-agent architecture for distributed processing
-- 📸 Comprehensive media analysis and metadata extraction
-- 🧠 Advanced embedding generation and vector storage
-- 🎯 Intelligent content clustering and organization
-- 🌐 Interactive HTML gallery generation
-- 👤 Human-in-the-loop control and curation
-- 🔄 Modular and extensible design
+```bash
+pip install -e .
+```
 
-[... rest of README content ...]
+## Requirements
+
+- Python 3.8 or higher
+- Docker (for Qdrant vector storage)
+- FFmpeg (for video processing)
+
+## Quick Start
+
+1. Start Qdrant:
+```bash
+docker-compose up -d
+```
+
+2. Run tests:
+```bash
+python tests/test_qdrant_connection.py
+python tests/test_image_processor.py
+python tests/test_video_processing.py
+```
+
+## Directory Structure
+
+```
+MediaManager/
+├── tools/
+│   ├── FileSystemScanner.py
+│   ├── ImageProcessor.py
+│   ├── VideoProcessor.py
+│   └── processing_utils.py
+└── tests/
+    ├── outputs/
+    │   ├── images/
+    │   └── videos/
+    ├── test_image_processor.py
+    ├── test_video_processing.py
+    └── test_qdrant_connection.py
+```

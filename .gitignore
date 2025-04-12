@@ -27,8 +27,7 @@ wheels/
 
 # Virtual Environment
 venv/
-venv39/
-.venv/
+venv*/
 env/
 ENV/
 
@@ -103,3 +102,10 @@ wheels/
 # Temporary files
 *.tmp
 Thumbs.db
+
+# Local development
+.DS_Store
+
+# Test outputs
+tests/outputs/
+outputs/

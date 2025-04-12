@@ -1,5 +1,9 @@
 from agency_swarm import Agent
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class CEOAgent(Agent):
     """
@@ -10,9 +14,10 @@ class CEOAgent(Agent):
     def __init__(self):
         super().__init__(
             name="CEO",
-            description="Human-in-the-loop controller. Manages user input, project settings, and delegates tasks.",
+            description="Responsible for client communication, task planning and management.",
             instructions=str(Path(__file__).parent / "instructions.md"),
             tools_folder=str(Path(__file__).parent / "tools"),
-            temperature=0.5,
-            max_prompt_tokens=25000,
+            model='gpt-4o-mini',
+            temperature=0.4,
+            max_prompt_tokens=4000,
         )

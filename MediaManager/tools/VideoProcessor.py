@@ -4,21 +4,104 @@
 # 📂 Expected File Path: photo_intelligence_agency/MediaManager/tools/VideoProcessor.py
 # 🧠 Reasoning: Centralizes video processing with efficient storage/retrieval via Qdrant
 
-// ... existing code ...
+import os
+import json
+import shutil
+import tempfile
+import logging
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime
+import ffmpeg
+from PIL import Image
+import torch
+from pydantic import Field, validator
+from agency_swarm.tools import BaseTool
+from qdrant_client.http.models import PointStruct
+
+try:
+    from scenedetect import detect, ContentDetector, SceneManager, open_video
+    SCENEDETECT_AVAILABLE = True
+except ImportError:
+    SCENEDETECT_AVAILABLE = False
+
+# Import shared resources
+from .processing_utils import (
+    logger,
+    qdrant_client,
+    processor,
+    model,
+    DEVICE,
+    EMBEDDING_DIM,
+    QDRANT_COLLECTION_NAME
+)
+
+# Constants
+SCENE_DETECTION_THRESHOLD = 27.0  # Default threshold for content-aware scene detection
+
+class SceneInfo:
+    """Data class for scene information"""
+    def __init__(self, scene_number: int, start_time_sec: float, end_time_sec: float, duration_sec: float):
+        self.scene_number = scene_number
+        self.start_time_sec = start_time_sec
+        self.end_time_sec = end_time_sec
+        self.duration_sec = duration_sec
+        
+    def dict(self):
+        return {
+            'scene_number': self.scene_number,
+            'start_time_sec': self.start_time_sec,
+            'end_time_sec': self.end_time_sec,
+            'duration_sec': self.duration_sec
+        }
+
+class VideoMetadata:
+    """Data class for video metadata"""
+    def __init__(self, **kwargs):
+        self.filename: str = kwargs.get('filename', '')
+        self.file_path: str = kwargs.get('file_path', '')
+        self.file_size_bytes: int = kwargs.get('file_size_bytes', 0)
+        self.duration_seconds: float = kwargs.get('duration_seconds', 0.0)
+        self.width: int = kwargs.get('width', 0)
+        self.height: int = kwargs.get('height', 0)
+        self.fps: float = kwargs.get('fps', 0.0)
+        self.codec_name: str = kwargs.get('codec_name', '')
+        self.bitrate: int = kwargs.get('bitrate', 0)
+        self.scenes: List[SceneInfo] = kwargs.get('scenes', [])
+        self.creation_time: datetime = kwargs.get('creation_time')
+        self.modification_time: datetime = kwargs.get('modification_time')
+        
+    def dict(self, exclude_none: bool = True):
+        data = {
+            'filename': self.filename,
+            'file_path': self.file_path,
+            'file_size_bytes': self.file_size_bytes,
+            'duration_seconds': self.duration_seconds,
+            'width': self.width,
+            'height': self.height,
+            'fps': self.fps,
+            'codec_name': self.codec_name,
+            'bitrate': self.bitrate,
+            'scenes': [scene.dict() for scene in self.scenes] if self.scenes else [],
+            'creation_time': self.creation_time.isoformat() if self.creation_time else None,
+            'modification_time': self.modification_time.isoformat() if self.modification_time else None
+        }
+        if exclude_none:
+            return {k: v for k, v in data.items() if v is not None}
+        return data
 
 class VideoProcessor(BaseTool):
     """
     Processes a single video file: extracts metadata using FFmpeg, detects scenes
-    using PySceneDetect, generates CLIP embeddings (using CUDA) for each scene,
-    and stores everything in Qdrant for efficient retrieval. Creates a structured
-    output directory containing frames, metadata, and scene information.
+    using PySceneDetect, generates CLIP embeddings (using CUDA) for each scene.
+    Creates a structured output directory containing frames, metadata, and scene information.
     Requires FFmpeg and CUDA-enabled environment.
     """
-    video_path: FilePath = Field(
+    video_path: str = Field(
         ...,
         description="The absolute path to the video file to be processed."
     )
-    output_dir: Optional[Path] = Field(
+    output_dir: Optional[str] = Field(
         None,
         description="Directory to store output files (frames, metadata, etc.). If None, creates one based on video name."
     )
@@ -28,23 +111,50 @@ class VideoProcessor(BaseTool):
     )
     save_frames: bool = Field(
         True,
-        description="Whether to save extracted frames to disk in addition to Qdrant storage."
+        description="Whether to save extracted frames to disk."
     )
 
     @validator('output_dir', pre=True, always=True)
     def setup_output_dir(cls, v, values):
         if v is None and 'video_path' in values:
             video_path = Path(values['video_path'])
-            v = video_path.parent / f"{video_path.stem}_output"
-        if isinstance(v, str):
-            v = Path(v)
-        v.mkdir(parents=True, exist_ok=True)
-        # Create subdirectories
-        (v / "frames").mkdir(exist_ok=True)
-        (v / "metadata").mkdir(exist_ok=True)
+            v = str(video_path.parent / f"{video_path.stem}_output")
+        if isinstance(v, (str, Path)):
+            v = str(v)  # Convert Path to string
+            os.makedirs(v, exist_ok=True)
+            os.makedirs(os.path.join(v, "frames"), exist_ok=True)
+            os.makedirs(os.path.join(v, "metadata"), exist_ok=True)
         return v
 
-// ... existing code ...
+    def _extract_metadata(self, vid_path: Path) -> Optional[VideoMetadata]:
+        """Extracts comprehensive metadata using FFmpeg."""
+        try:
+            probe = ffmpeg.probe(str(vid_path))
+            video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
+            
+            # Calculate duration
+            duration = float(probe['format'].get('duration', 0))
+            
+            # Get file stats
+            file_stats = vid_path.stat()
+            
+            return VideoMetadata(
+                filename=vid_path.name,
+                file_path=str(vid_path.resolve()),
+                file_size_bytes=file_stats.st_size,
+                duration_seconds=duration,
+                width=int(video_info.get('width', 0)),
+                height=int(video_info.get('height', 0)),
+                fps=eval(video_info.get('r_frame_rate', '0/1')),
+                codec_name=video_info.get('codec_name', ''),
+                bitrate=int(probe['format'].get('bit_rate', 0)),
+                creation_time=datetime.fromtimestamp(file_stats.st_ctime),
+                modification_time=datetime.fromtimestamp(file_stats.st_mtime)
+            )
+            
+        except Exception as e:
+            logger.error(f"Error extracting metadata: {e}")
+            return None
 
     def _detect_scenes(self, vid_path: Path) -> Optional[Tuple[List[SceneInfo], List[Tuple[float, Path]]]]:
         """Detects scenes using PySceneDetect and saves representative frames."""
@@ -54,7 +164,7 @@ class VideoProcessor(BaseTool):
 
         scene_list_info = []
         scene_frame_paths = []
-        frames_dir = self.output_dir / "frames" if self.save_frames else Path(tempfile.mkdtemp(prefix="scene_frames_"))
+        frames_dir = os.path.join(self.output_dir, "frames") if self.save_frames else tempfile.mkdtemp(prefix="scene_frames_")
         
         try:
             logger.info(f"Detecting scenes for {vid_path.name}...")
@@ -90,7 +200,7 @@ class VideoProcessor(BaseTool):
                 ]
                 
                 for frame_idx, frame_time in enumerate(frame_times):
-                    frame_path = frames_dir / f"scene_{scene_num:04d}_frame_{frame_idx:02d}.jpg"
+                    frame_path = os.path.join(frames_dir, f"scene_{scene_num:04d}_frame_{frame_idx:02d}.jpg")
                     try:
                         (
                             ffmpeg
@@ -99,8 +209,8 @@ class VideoProcessor(BaseTool):
                             .overwrite_output()
                             .run(capture_stdout=True, capture_stderr=True)
                         )
-                        if frame_path.exists():
-                            scene_frame_paths.append((frame_time, frame_path))
+                        if os.path.exists(frame_path):
+                            scene_frame_paths.append((frame_time, Path(frame_path)))
                             logger.debug(f"Saved frame {frame_idx} for scene {scene_num} at {frame_time:.2f}s")
                         else:
                             logger.warning(f"Failed to save frame {frame_idx} for scene {scene_num}")
@@ -115,17 +225,57 @@ class VideoProcessor(BaseTool):
 
         except Exception as e:
             logger.error(f"Failed during scene detection: {e}", exc_info=True)
-            if not self.save_frames and frames_dir.exists():
+            if not self.save_frames and os.path.exists(frames_dir):
                 shutil.rmtree(frames_dir)
             return None, None
 
-// ... existing code ...
+    def _generate_embedding_from_frames(self, frame_paths: List[Path]) -> Optional[List[float]]:
+        """Generate a single embedding from multiple frames using CLIP."""
+        if not model or not processor:
+            logger.error("CLIP model/processor not initialized")
+            return None
+            
+        try:
+            # Load and preprocess all frames
+            processed_frames = []
+            for frame_path in frame_paths:
+                try:
+                    img = Image.open(frame_path)
+                    if img.mode != "RGB":
+                        img = img.convert("RGB")
+                    inputs = processor(images=img, return_tensors="pt", padding=True)
+                    processed_frames.append(inputs)
+                except Exception as e:
+                    logger.warning(f"Error processing frame {frame_path}: {e}")
+                    continue
+                    
+            if not processed_frames:
+                return None
+                
+            # Combine all preprocessed frames
+            batch_inputs = {
+                k: torch.cat([frame[k] for frame in processed_frames]).to(DEVICE)
+                for k in processed_frames[0].keys()
+            }
+            
+            # Generate embeddings
+            with torch.no_grad():
+                outputs = model.get_image_features(**batch_inputs)
+            embeddings = outputs.cpu().numpy()
+            
+            # Average all frame embeddings
+            avg_embedding = embeddings.mean(axis=0)
+            return avg_embedding.tolist()
+            
+        except Exception as e:
+            logger.error(f"Error generating embeddings: {e}")
+            return None
 
     def run(self) -> Dict[str, Any]:
         """
         Executes the video processing pipeline: metadata extraction, scene detection,
-        frame extraction, embedding generation, and Qdrant storage. Creates a structured
-        output directory with all extracted data.
+        frame extraction, and embedding generation. Creates a structured output directory 
+        with all extracted data.
         """
         vid_path = Path(self.video_path)
         logger.info(f"Processing video: {vid_path.name}")
@@ -138,7 +288,7 @@ class VideoProcessor(BaseTool):
                 return {"status": "error", "message": "Failed to extract metadata", "file_path": str(vid_path)}
 
             # Save metadata to JSON
-            metadata_file = self.output_dir / "metadata" / "video_metadata.json"
+            metadata_file = os.path.join(self.output_dir, "metadata", "video_metadata.json")
             with open(metadata_file, 'w') as f:
                 json.dump(metadata.dict(exclude_none=True), f, indent=2)
 
@@ -149,7 +299,7 @@ class VideoProcessor(BaseTool):
 
             # Save scene information
             if scene_info_list:
-                scenes_file = self.output_dir / "metadata" / "scenes.json"
+                scenes_file = os.path.join(self.output_dir, "metadata", "scenes.json")
                 with open(scenes_file, 'w') as f:
                     json.dump([scene.dict() for scene in scene_info_list], f, indent=2)
 
@@ -169,28 +319,34 @@ class VideoProcessor(BaseTool):
             if len(embedding) != EMBEDDING_DIM and model is not None:
                 return {"status": "error", "message": f"Embedding dimension mismatch", "file_path": str(vid_path)}
 
-            # Store in Qdrant
-            upsert_success = self._upsert_to_qdrant(metadata, embedding)
-            if not upsert_success:
-                return {"status": "error", "message": "Failed to store in Qdrant", "file_path": str(vid_path)}
-
-            logger.info(f"Successfully processed video: {vid_path.name}")
-            return {
+            # Return success with processed data
+            result = {
                 "status": "success",
-                "message": "Video processed and data stored",
+                "message": "Video processed successfully",
                 "file_path": str(vid_path),
                 "output_dir": str(self.output_dir),
                 "metadata_file": str(metadata_file),
                 "num_scenes": len(scene_info_list) if scene_info_list else 0,
-                "num_frames": len(frame_paths_to_embed)
+                "num_frames": len(frame_paths_to_embed),
+                "metadata": metadata.dict(),
+                "embedding": embedding
             }
 
+            logger.info(f"Successfully processed video: {vid_path.name}")
+            return result
+
         finally:
-            if not self.save_frames and temp_dir_scenes and temp_dir_scenes.exists():
+            if not self.save_frames and temp_dir_scenes and os.path.exists(temp_dir_scenes):
                 try:
                     shutil.rmtree(temp_dir_scenes)
                     logger.info(f"Cleaned up temporary directory: {temp_dir_scenes}")
                 except Exception as cleanup_err:
                     logger.error(f"Error cleaning up temporary directory: {cleanup_err}")
 
-// ... existing code ...
+if __name__ == "__main__":
+    # Test with a sample video
+    test_video = "path/to/test/video.mp4"
+    if os.path.exists(test_video):
+        processor = VideoProcessor(video_path=test_video)
+        result = processor.run()
+        print("Processing Result:", result)

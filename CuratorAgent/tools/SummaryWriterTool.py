@@ -60,7 +60,7 @@ Key Metadata:
         
         try:
             response = client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a media curator assistant. Create concise, descriptive summaries of media clusters."},
                     {"role": "user", "content": prompt}

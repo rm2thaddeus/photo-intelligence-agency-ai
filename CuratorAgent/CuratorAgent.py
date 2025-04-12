@@ -1,5 +1,9 @@
 from agency_swarm import Agent
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class CuratorAgent(Agent):
     """
@@ -11,14 +15,10 @@ class CuratorAgent(Agent):
     def __init__(self):
         super().__init__(
             name="Curator",
-            description=(
-                "Advanced media curator that processes both images and videos. "
-                "Fetches data from Qdrant, performs semantic clustering, generates "
-                "content-aware summaries, and creates rich HTML galleries with "
-                "video previews and detailed metadata display."
-            ),
+            description="Responsible for organizing and managing media content.",
             instructions=str(Path(__file__).parent / "instructions.md"),
             tools_folder=str(Path(__file__).parent / "tools"),
-            temperature=0.4,  # Balanced temperature for creativity and consistency
-            max_prompt_tokens=25000,
+            model='gpt-4o-mini',
+            temperature=0.4,
+            max_prompt_tokens=4000,
         ) 
