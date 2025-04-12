@@ -109,3 +109,7 @@ Thumbs.db
 # Test outputs
 tests/outputs/
 outputs/
+
+# Qdrant data
+data/qdrant/
+qdrant/
