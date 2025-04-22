@@ -9,14 +9,13 @@ uvicorn>=0.27.0
 qdrant-client>=1.7.0
 
 # Media Processing
-Pillow>=10.0.0
-opencv-python>=4.8.0
-exifread>=3.0.0
+Pillow>=9.0.0
+rawpy>=0.19.0
 ffmpeg-python>=0.2.0
 
 # Machine Learning & Embeddings
 torch>=2.0.0
-transformers>=4.36.0
+transformers>=4.30.0
 openai>=1.0.0
 sentence-transformers>=2.2.2
 clip @ git+https://github.com/openai/CLIP.git
@@ -46,3 +45,15 @@ python-json-logger>=2.0.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
+
+# MediaManager Tools Dependencies
+PySceneDetect>=0.6.2
+opencv-python-headless
+
+# Potentially needed by CLIP or other models
+tokenizers
+ftfy
+regex
+
+# UI Dependency (if using Gradio)
+gradio>=4.0.0

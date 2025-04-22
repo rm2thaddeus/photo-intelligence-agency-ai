@@ -2,26 +2,27 @@ from agency_swarm import Agency
 from pathlib import Path
 
 from CEOAgent.CEOAgent import CEOAgent
-from MediaMinerAgent.MediaMinerAgent import MediaMinerAgent
-from CuratorAgent.CuratorAgent import CuratorAgent
+# Remove CuratorAgent import if no longer used directly in the agency chart
+# from CuratorAgent.CuratorAgent import CuratorAgent 
+from MediaManager.MediaManager import MediaManager
 
-# Initialize agents with optimized temperatures
-ceo = CEOAgent()  # Uses default temperature for decision making
-miner = MediaMinerAgent()  # Lower temperature for precise operations
-curator = CuratorAgent()  # Higher temperature for creative tasks
+# Initialize agents
+ceo = CEOAgent()
+# curator = CuratorAgent() # Remove instantiation if not used
+media_manager = MediaManager()
 
-# Create agency with communication flows
+# Create agency with updated communication flows
 agency = Agency(
     [
-        ceo,  # CEO is the entry point for user communication
-        [ceo, miner],  # CEO can communicate with MediaMiner
-        [ceo, curator],  # CEO can communicate with Curator
-        [miner, curator],  # MediaMiner can communicate with Curator
+        ceo,  # CEO is the entry point
+        [ceo, media_manager],  # CEO can communicate with MediaManager
+        # Add other flows if needed, e.g., [media_manager, curator] if MediaManager needs Curator
     ],
     shared_instructions=str(Path(__file__).parent / "agency_manifesto.md"),
-    temperature=0.4,  # Default temperature for general communication
-    max_prompt_tokens=4000,  # Reduced for cost efficiency while maintaining context
+    temperature=0.4,  
+    max_prompt_tokens=4000, 
 )
 
 if __name__ == "__main__":
-    agency.run_demo()  # Start the agency in terminal mode
+    # Launch Gradio UI with specified height
+    agency.demo_gradio(height=900)

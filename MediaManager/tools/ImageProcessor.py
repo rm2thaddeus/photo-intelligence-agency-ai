@@ -8,6 +8,7 @@ from datetime import datetime
 from pydantic import Field, validator
 from agency_swarm.tools import BaseTool
 from qdrant_client.http.models import PointStruct
+import json
 
 # --- Import Shared Resources ---
 from .processing_utils import (
@@ -207,84 +208,148 @@ class ImageProcessor(BaseTool):
 
     def run(self) -> Dict[str, Any]:
         """
-        Process all images in input_paths and return their metadata and embeddings.
+        Process all images in input_paths, generates embeddings, stores in Qdrant,
+        and returns a status summary.
         """
         try:
             # Validate model and processor
             if not model or not processor:
+                logger.error("CLIP model/processor not initialized")
                 return {
                     'status': 'error',
-                    'message': 'CLIP model not initialized'
+                    'message': 'CLIP model or processor not initialized'
                 }
-            
+            if not qdrant_client:
+                 logger.error("Qdrant client not initialized")
+                 return {
+                    'status': 'error',
+                    'message': 'Qdrant client not initialized'
+                 }
+
             # Process images in batches
             all_results = []
-            for i in range(0, len(self.input_paths), self.batch_size):
-                batch_paths = [Path(p) for p in self.input_paths[i:i + self.batch_size]]
-                batch_results = self._process_batch(batch_paths)
+            successfully_processed_paths = []
+            failed_paths = []
+            
+            valid_input_paths = self.validate_paths(self.input_paths) # Re-validate here to ensure we have the full list
+            
+            logger.info(f"Starting processing for {len(valid_input_paths)} images...")
+
+            for i in range(0, len(valid_input_paths), self.batch_size):
+                batch_paths_str = valid_input_paths[i:i + self.batch_size]
+                batch_paths_obj = [Path(p) for p in batch_paths_str]
+                logger.info(f"Processing batch {i // self.batch_size + 1} ({len(batch_paths_obj)} images)")
+                batch_results = self._process_batch(batch_paths_obj)
                 all_results.extend(batch_results)
+                # Keep track of which paths succeeded in this batch
+                for res in batch_results:
+                    successfully_processed_paths.append(res['metadata']['file_path'])
             
+            # Determine failed paths
+            failed_paths = [p for p in valid_input_paths if p not in successfully_processed_paths]
+
             if not all_results:
+                logger.warning("No images were successfully processed during embedding generation.")
                 return {
-                    'status': 'error',
-                    'message': 'No images were successfully processed'
+                    'status': 'warning',
+                    'message': 'No images were successfully processed for embedding.',
+                    'processed_count': 0,
+                    'failed_count': len(failed_paths),
+                    'failed_paths': failed_paths
                 }
-            
-            # Return results directly instead of storing in Qdrant
+
+            # Upsert results to Qdrant
+            logger.info(f"Upserting {len(all_results)} processed images to Qdrant...")
+            upsert_success = self._upsert_to_qdrant(all_results)
+
+            if upsert_success:
+                logger.info(f"Successfully upserted {len(all_results)} items to Qdrant.")
+                final_status = 'success'
+                final_message = f"Successfully processed and stored {len(all_results)} images."
+            else:
+                logger.error("Failed to upsert data to Qdrant.")
+                final_status = 'error'
+                final_message = f"Processed {len(all_results)} images, but failed to store them in Qdrant."
+                # Add successfully processed paths to failed paths if Qdrant fails
+                failed_paths.extend(successfully_processed_paths)
+                successfully_processed_paths = [] # Reset success list
+
             return {
-                'status': 'success',
-                'processed_count': len(all_results),
-                'results': all_results
+                'status': final_status,
+                'message': final_message,
+                'processed_count': len(successfully_processed_paths),
+                'failed_count': len(failed_paths),
+                'failed_paths': failed_paths
             }
-            
+
         except Exception as e:
-            logger.error(f"Error in image processing: {e}")
+            logger.error(f"Error during image processing pipeline: {e}", exc_info=True)
             return {
                 'status': 'error',
-                'message': str(e)
+                'message': f"An unexpected error occurred: {e}",
+                'processed_count': 0,
+                'failed_count': len(self.input_paths), # Assume all failed on major error
+                'failed_paths': self.input_paths
             }
 
 # Example Test Case
 if __name__ == "__main__":
-    # Create test directory with dummy images
-    test_dir = Path("./temp_image_test")
-    test_dir.mkdir(exist_ok=True)
+    # NOTE: This test requires a running Qdrant instance and proper environment setup
+    #       (CLIP models downloaded, .env file with QDRANT_URL, QDRANT_API_KEY)
     
-    # Create a few test images
-    test_images = []
-    for i in range(3):
-        img_path = test_dir / f"test_image_{i}.png"
-        img = Image.new('RGB', (60, 30), color=f'#{i*20:02x}0000')
-        img.save(img_path)
-        test_images.append(str(img_path.resolve()))
-        
+    # Ensure processing_utils initializes correctly
+    if not model or not processor or not qdrant_client:
+        print("ERROR: CLIP model/processor or Qdrant client not initialized.")
+        print("Please ensure processing_utils.py runs correctly and Qdrant is accessible.")
+        exit()
+    
+    # Create test directory with dummy images
+    test_dir = Path("./temp_image_test_integration")
+    test_dir.mkdir(exist_ok=True)
+    img1_path = test_dir / "test1.png"
+    img2_path = test_dir / "test2.jpg"
+    invalid_path = test_dir / "not_an_image.txt"
     try:
-        print("\n--- Testing ImageProcessor ---")
-        processor_tool = ImageProcessor(input_paths=test_images, batch_size=2)
-        result = processor_tool.run()
-        print("\nProcessing Result:")
-        print(result)
-        
-        if result["status"] == "success":
-            # Verify in Qdrant
-            try:
-                for path in result["processed_paths"]:
-                    search_result = qdrant_client.retrieve(
-                        collection_name=QDRANT_COLLECTION_NAME,
-                        ids=[path],
-                        with_payload=True
-                    )
-                    if search_result:
-                        print(f"\nVerified in Qdrant: {path}")
-                        print("Metadata:", search_result[0].payload)
-            except Exception as q_err:
-                print(f"\nQdrant verification error: {q_err}")
-                
+        Image.new('RGB', (60, 30), color = 'red').save(img1_path)
+        Image.new('RGB', (100, 100), color = 'blue').save(img2_path)
+        with open(invalid_path, "w") as f:
+            f.write("hello")
+        print(f"Created test files in: {test_dir.resolve()}")
     except Exception as e:
-        print(f"\nTest error: {e}")
-    finally:
-        # Cleanup
-        import shutil
+        print(f"Error creating test files: {e}")
+        # Potentially clean up if creation failed partially
         if test_dir.exists():
-            shutil.rmtree(test_dir)
-            print("\n--- Cleanup Complete ---")
+             shutil.rmtree(test_dir)
+        exit()
+
+    # Instantiate the tool
+    image_processor_tool = ImageProcessor(
+        input_paths=[str(test_dir.resolve())] # Process the whole directory
+    )
+
+    # Run the tool
+    print("\n--- Running ImageProcessor Tool ---")
+    result = image_processor_tool.run()
+    print("\n--- Result ---")
+    print(json.dumps(result, indent=2))
+
+    # Verification (Optional - requires direct Qdrant query)
+    if result['status'] == 'success' and result['processed_count'] > 0:
+        try:
+            # Check if points exist in Qdrant (example for one file)
+            fetch_result = qdrant_client.retrieve(
+                collection_name=QDRANT_COLLECTION_NAME,
+                ids=[str(img1_path.resolve())]
+            )
+            if fetch_result:
+                print(f"\nVerification: Successfully retrieved point for {img1_path.name} from Qdrant.")
+            else:
+                print(f"\nVerification WARNING: Could not retrieve point for {img1_path.name} from Qdrant.")
+        except Exception as e:
+            print(f"\nVerification ERROR: Could not query Qdrant - {e}")
+            
+    # Cleanup
+    print("\n--- Cleaning up --- ")
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+        print(f"Removed test directory: {test_dir.resolve()}")

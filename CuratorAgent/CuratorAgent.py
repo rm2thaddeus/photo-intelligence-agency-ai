@@ -18,7 +18,7 @@ class CuratorAgent(Agent):
             description="Responsible for organizing and managing media content.",
             instructions=str(Path(__file__).parent / "instructions.md"),
             tools_folder=str(Path(__file__).parent / "tools"),
-            model='gpt-4o-mini',
+            model='gpt-4.1-nano',
             temperature=0.4,
             max_prompt_tokens=4000,
         ) 

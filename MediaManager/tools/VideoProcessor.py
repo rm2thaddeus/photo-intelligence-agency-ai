@@ -271,82 +271,166 @@ class VideoProcessor(BaseTool):
             logger.error(f"Error generating embeddings: {e}")
             return None
 
-    def run(self) -> Dict[str, Any]:
-        """
-        Executes the video processing pipeline: metadata extraction, scene detection,
-        frame extraction, and embedding generation. Creates a structured output directory 
-        with all extracted data.
-        """
-        vid_path = Path(self.video_path)
-        logger.info(f"Processing video: {vid_path.name}")
-        temp_dir_scenes = None
+    def _upsert_to_qdrant(self, metadata: VideoMetadata, embedding: List[float]) -> bool:
+        """Upsert processed video data (metadata + embedding) to Qdrant."""
+        if not qdrant_client:
+            logger.error("Qdrant client not initialized")
+            return False
+        if embedding is None:
+            logger.error(f"Cannot upsert {metadata.filename}, embedding is None.")
+            return False
 
         try:
-            # Extract metadata
-            metadata = self._extract_metadata(vid_path)
-            if not metadata:
-                return {"status": "error", "message": "Failed to extract metadata", "file_path": str(vid_path)}
+            point = PointStruct(
+                id=str(metadata.file_path), # Use file path as unique ID
+                vector=embedding,
+                payload={
+                    **metadata.dict(), # Include all metadata
+                    'media_type': 'video'
+                }
+            )
+            
+            qdrant_client.upsert(
+                collection_name=QDRANT_COLLECTION_NAME,
+                points=[point],
+                wait=True
+            )
+            logger.info(f"Successfully upserted video data for {metadata.filename} to Qdrant.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error upserting video data for {metadata.filename} to Qdrant: {e}")
+            return False
 
-            # Save metadata to JSON
-            metadata_file = os.path.join(self.output_dir, "metadata", "video_metadata.json")
+    def run(self) -> Dict[str, Any]:
+        """
+        Processes the video: extracts metadata, detects scenes, generates embedding,
+        stores in Qdrant, and returns a status summary.
+        """
+        vid_path = Path(self.video_path)
+        if not vid_path.is_file():
+            return {"status": "error", "message": f"Video file not found: {self.video_path}"}
+            
+        logger.info(f"Starting processing for video: {vid_path.name}")
+
+        # 1. Extract Metadata
+        metadata = self._extract_metadata(vid_path)
+        if not metadata:
+            return {"status": "error", "message": f"Failed to extract metadata for {vid_path.name}"}
+
+        # 2. Detect Scenes and Extract Frames
+        scene_info_list, frame_data = self._detect_scenes(vid_path)
+        if scene_info_list is not None:
+            metadata.scenes = scene_info_list # Add scene info to metadata
+        
+        frames_to_process = [fp for _, fp in frame_data] if frame_data else []
+        temp_frames_dir = None
+        if not self.save_frames and frame_data: # If frames were saved temporarily
+            # Extract the temporary directory path from one of the frame paths
+            if frames_to_process:
+                 temp_frames_dir = frames_to_process[0].parent
+
+        if not frames_to_process:
+            logger.warning(f"No frames extracted for {vid_path.name}, cannot generate embedding.")
+            # Still try to save metadata without embedding if scene detection failed?
+            # For now, let's return an error if no embedding can be made.
+            if temp_frames_dir and os.path.exists(temp_frames_dir):
+                shutil.rmtree(temp_frames_dir)
+            return {"status": "error", "message": f"No frames extracted for {vid_path.name}, cannot generate embedding."}
+
+        # 3. Generate Embedding
+        logger.info(f"Generating embedding from {len(frames_to_process)} frames for {vid_path.name}...")
+        embedding = self._generate_embedding_from_frames(frames_to_process)
+
+        # Clean up temporary frames if they were created
+        if temp_frames_dir and os.path.exists(temp_frames_dir):
+            shutil.rmtree(temp_frames_dir)
+            logger.info(f"Cleaned up temporary frames directory: {temp_frames_dir}")
+
+        if not embedding:
+            return {"status": "error", "message": f"Failed to generate embedding for {vid_path.name}"}
+        
+        # 4. Save Metadata Locally (Optional but good practice)
+        metadata_file = Path(self.output_dir) / "metadata" / f"{vid_path.stem}_metadata.json"
+        try:
             with open(metadata_file, 'w') as f:
-                json.dump(metadata.dict(exclude_none=True), f, indent=2)
+                json.dump(metadata.dict(), f, indent=4)
+            logger.info(f"Saved metadata to {metadata_file}")
+        except Exception as e:
+             logger.warning(f"Could not save metadata JSON to {metadata_file}: {e}")
 
-            # Detect scenes and extract frames
-            scene_info_list, scene_frames_data = self._detect_scenes(vid_path)
-            if scene_info_list:
-                metadata.scenes = scene_info_list
+        # 5. Upsert to Qdrant
+        upsert_success = self._upsert_to_qdrant(metadata, embedding)
 
-            # Save scene information
-            if scene_info_list:
-                scenes_file = os.path.join(self.output_dir, "metadata", "scenes.json")
-                with open(scenes_file, 'w') as f:
-                    json.dump([scene.dict() for scene in scene_info_list], f, indent=2)
-
-            frame_paths_to_embed = []
-            if scene_frames_data:
-                frame_paths_to_embed = [fp for _, fp in scene_frames_data]
-                if not self.save_frames:
-                    temp_dir_scenes = frame_paths_to_embed[0].parent
-            else:
-                return {"status": "error", "message": "No frames extracted", "file_path": str(vid_path)}
-
-            # Generate embeddings
-            embedding = self._generate_embedding_from_frames(frame_paths_to_embed)
-            if not embedding:
-                return {"status": "error", "message": "Failed to generate embedding", "file_path": str(vid_path)}
-
-            if len(embedding) != EMBEDDING_DIM and model is not None:
-                return {"status": "error", "message": f"Embedding dimension mismatch", "file_path": str(vid_path)}
-
-            # Return success with processed data
-            result = {
+        if upsert_success:
+            return {
                 "status": "success",
-                "message": "Video processed successfully",
-                "file_path": str(vid_path),
-                "output_dir": str(self.output_dir),
-                "metadata_file": str(metadata_file),
-                "num_scenes": len(scene_info_list) if scene_info_list else 0,
-                "num_frames": len(frame_paths_to_embed),
-                "metadata": metadata.dict(),
-                "embedding": embedding
+                "message": f"Successfully processed and stored video {vid_path.name}",
+                "output_directory": self.output_dir,
+                "qdrant_id": str(metadata.file_path)
+            }
+        else:
+             return {
+                "status": "error",
+                "message": f"Processed video {vid_path.name}, but failed to store in Qdrant.",
+                "output_directory": self.output_dir
             }
 
-            logger.info(f"Successfully processed video: {vid_path.name}")
-            return result
-
-        finally:
-            if not self.save_frames and temp_dir_scenes and os.path.exists(temp_dir_scenes):
-                try:
-                    shutil.rmtree(temp_dir_scenes)
-                    logger.info(f"Cleaned up temporary directory: {temp_dir_scenes}")
-                except Exception as cleanup_err:
-                    logger.error(f"Error cleaning up temporary directory: {cleanup_err}")
-
+# Example Test Case
 if __name__ == "__main__":
-    # Test with a sample video
-    test_video = "path/to/test/video.mp4"
-    if os.path.exists(test_video):
-        processor = VideoProcessor(video_path=test_video)
-        result = processor.run()
-        print("Processing Result:", result)
+    # NOTE: Requires ffmpeg, ffprobe, PySceneDetect (optional), CLIP model, Qdrant
+    print("VideoProcessor Test Case")
+    
+    # Ensure shared resources are available
+    if not model or not processor or not qdrant_client:
+        print("ERROR: CLIP model/processor or Qdrant client not initialized.")
+        exit()
+    if not SCENEDETECT_AVAILABLE:
+         print("WARNING: PySceneDetect not installed, scene detection will be skipped.")
+         
+    # Create a dummy video file for testing (requires ffmpeg installed)
+    temp_dir = Path("./temp_video_test_integration")
+    temp_dir.mkdir(exist_ok=True)
+    dummy_video_path = temp_dir / "dummy_video.mp4"
+    output_dir = temp_dir / "dummy_video_output"
+    
+    try:
+        # Generate a short black video with ffmpeg
+        ffmpeg.input('color=c=black:s=64x64:r=1', f='lavfi', t=5).output(str(dummy_video_path), vcodec='libx264').overwrite_output().run(capture_stdout=True, capture_stderr=True)
+        print(f"Created dummy video: {dummy_video_path.resolve()}")
+    except Exception as e:
+        print(f"Error creating dummy video (ffmpeg might be missing or misconfigured): {e}")
+        if temp_dir.exists():
+             shutil.rmtree(temp_dir)
+        exit()
+
+    # Instantiate and run the tool
+    processor_tool = VideoProcessor(
+        video_path=str(dummy_video_path.resolve()), 
+        output_dir=str(output_dir.resolve()), 
+        save_frames=False # Don't save frames in test by default
+    )
+    print("\n--- Running VideoProcessor Tool ---")
+    result = processor_tool.run()
+    print("\n--- Result ---")
+    print(json.dumps(result, indent=2))
+    
+    # Verification (Optional)
+    if result.get('status') == 'success' and result.get('qdrant_id'):
+        try:
+            fetch_result = qdrant_client.retrieve(
+                collection_name=QDRANT_COLLECTION_NAME,
+                ids=[result['qdrant_id']]
+            )
+            if fetch_result:
+                print(f"\nVerification: Successfully retrieved point for {result['qdrant_id']} from Qdrant.")
+            else:
+                print(f"\nVerification WARNING: Could not retrieve point for {result['qdrant_id']} from Qdrant.")
+        except Exception as e:
+            print(f"\nVerification ERROR: Could not query Qdrant - {e}")
+
+    # Cleanup
+    print("\n--- Cleaning up ---")
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+        print(f"Removed test directory: {temp_dir.resolve()}")

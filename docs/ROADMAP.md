@@ -19,51 +19,50 @@
   - ✅ CUDA acceleration integration
   - ✅ Structured output organization
 
-### Phase 2: Curator Development (Current Focus)
-- 🔄 CuratorAgent implementation
-  - ✅ Media clustering tool
-    - ✅ Grouping similar images/videos (HDBSCAN implementation)
-    - ✅ Timeline-based organization
-    - ✅ Smart album creation via clustering
-  - ✅ Gallery generation tool
-    - ✅ Customizable HTML templates
-    - ✅ Interactive timeline view
-    - ✅ Metadata display integration
-  - ✅ Search and retrieval tool
-    - ✅ Semantic search capabilities via Qdrant
-    - ✅ Multi-modal queries support
-    - ✅ Filter and sort options
-  - ✅ Analytics tool
-    - ✅ Collection statistics
-    - ✅ Cluster analysis
-    - ✅ Processing metrics
-- 🔄 Integration with MediaManager
-  - ✅ Qdrant database access
-  - 🔄 Real-time updates
-  - [ ] Event-driven processing
-- [ ] Enhanced metadata organization
+### Phase 2: MediaManager Enhancement & Curator Foundation (Current Focus)
+- ✅ **MediaManager Robustness (Priority)**
+  - ✅ File system scanning (`DirectoryInspector` tool implemented)
+  - [ ] Metadata extraction tool refinement/creation (`MetadataExtractor`)
+  - [ ] Embedding generation tool (`EmbeddingGenerator` - e.g., using sentence-transformers)
+  - [ ] Qdrant integration tool (`QdrantUploader`)
+  - [ ] Update MediaManager workflow instructions to use processing tools
+  - [ ] Add necessary dependencies (qdrant-client, sentence-transformers) to requirements.txt
+- 🔄 **CuratorAgent Foundation**
+  - [ ] Initial CuratorAgent implementation skeleton
+  - [ ] Design data structures for curated outputs (clusters, galleries)
+  - [ ] *Defer full implementation of Curator tools (Clustering, Gallery Gen, Search, Analytics) until MediaManager pipeline is stable.*
+- [ ] **UI Development (Initial)**
+  - [ ] Implement basic Gradio UI via `agency.run_demo(gradio=True)` for interaction and logging.
+- [ ] Integration between MediaManager and Curator
+  - [ ] Define data flow from MediaManager's storage (Qdrant) to Curator
+- [ ] Enhanced metadata organization (Deferred slightly)
   - [ ] Custom metadata fields
   - [ ] Metadata validation
   - [ ] Batch updates
-- [ ] User interface improvements
+
+### Phase 3: Curator Development & UI Enhancement (Q3 2024)
+- [ ] **CuratorAgent Tooling**
+  - [ ] Media clustering tool (HDBSCAN, etc.)
+  - [ ] Gallery generation tool (HTML templates)
+  - [ ] Search and retrieval tool (Qdrant semantic search)
+  - [ ] Analytics tool
+- [ ] **UI Enhancements**
+  - [ ] Explore more custom UI options if needed (Streamlit, Flask, etc.)
   - [ ] Gallery customization options
   - [ ] Interactive filters
   - [ ] Advanced search interface
-
-### Phase 3: Optimization & Scale (Q3 2024)
 - [ ] Performance optimization
   - Batch processing improvements
   - Memory usage optimization
   - Processing queue management
-- [ ] Distributed computing support
-- [ ] Error handling and recovery
-- [ ] Monitoring and logging
-- [ ] Security enhancements
-  - Access control
-  - Data encryption
-  - Secure API endpoints
 
-### Phase 4: Advanced Features (Q4 2024)
+### Phase 4: Optimization & Scale (Late Q3/Q4 2024)
+- [ ] Distributed computing support
+- [ ] Error handling and recovery improvements
+- [ ] Monitoring and logging enhancements
+- [ ] Security enhancements
+
+### Phase 5: Advanced Features (Q4 2024 / Q1 2025)
 - [ ] Advanced AI capabilities
   - Object detection
   - Face recognition
@@ -77,7 +76,7 @@
   - Shared collections
   - Access management
 
-### Phase 5: Future Vision (2025+)
+### Phase 6: Future Vision (2025+)
 - [ ] Mobile support
 - [ ] Cloud deployment
 - [ ] API ecosystem
@@ -91,8 +90,8 @@
 - 🔄 User feedback integration
 
 ## Next Steps (Immediate Focus)
-1. ✅ Implement CuratorAgent core tools
-2. ✅ Develop clustering algorithms
-3. ✅ Create interactive gallery templates
-4. 🔄 Complete MediaManager integration
-5. [ ] Enhance metadata organization system
+1.  Implement/Refine `MediaManager` tools (`MetadataExtractor`, `EmbeddingGenerator`, `QdrantUploader`).
+2.  Update `MediaManager` instructions & `requirements.txt`.
+3.  Implement basic Gradio UI in `agency.py`.
+4.  Test the data ingestion pipeline (scan -> metadata -> embedding -> Qdrant).
+5.  Begin skeleton implementation of `CuratorAgent`.
