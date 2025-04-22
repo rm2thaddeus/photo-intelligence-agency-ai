@@ -13,6 +13,7 @@ class MediaManager(Agent):
             description="Scans media files, extracts metadata, generates embeddings, and stores them in Qdrant.",
             instructions=str(Path(__file__).parent / "instructions.md"),
             tools_folder=str(Path(__file__).parent / "tools"),
+            # Removed explicit tools list to use only tools_folder which is more compatible with version 0.4.2
             model='gpt-4.1-nano',
             temperature=0.3,  # Lower temperature for more deterministic behavior
             max_prompt_tokens=25000,
