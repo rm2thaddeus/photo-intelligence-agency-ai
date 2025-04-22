@@ -21,12 +21,13 @@
 
 ### Phase 2: MediaManager Enhancement & Curator Foundation (Current Focus)
 - ✅ **MediaManager Robustness (Priority)**
-  - ✅ File system scanning (`DirectoryInspector` tool implemented)
+  - ✅ File system scanning (`FileSystemScanner.py`)
   - ✅ Core processing utilities refactoring (`processing_utils.py`)
   - ✅ Environment configuration (venv313 setup and project rules)
-  - [ ] Metadata extraction tool refinement (`MetadataExtractor`)
-  - [ ] Embedding generation tool refinement (`EmbeddingGenerator`)
-  - [ ] Qdrant integration enhancement (`QdrantUploader`)
+  - 🔄 Processor refinement and optimization
+    - 🔄 Enhance error handling and recovery
+    - 🔄 Improve batch processing capabilities
+    - 🔄 Better progress reporting and logging
   - [ ] Update MediaManager workflow instructions
 - 🔄 **CuratorAgent Foundation**
   - [ ] Initial CuratorAgent implementation skeleton
@@ -91,8 +92,9 @@
 - 🔄 User feedback integration
 
 ## Next Steps (Immediate Focus)
-1. Complete MediaManager tools refinement (`MetadataExtractor`, `EmbeddingGenerator`, `QdrantUploader`)
-2. Update MediaManager instructions & requirements.txt
-3. Implement basic Gradio UI in agency.py
-4. Test the end-to-end data ingestion pipeline
-5. Begin skeleton implementation of CuratorAgent
+1. Enhance existing processors (`ImageProcessor`, `VideoProcessor`) with improved error handling and batch capabilities
+2. Ensure consistent data format across processors for seamless Qdrant integration
+3. Update MediaManager instructions for clarity and efficiency
+4. Implement basic Gradio UI in agency.py
+5. Test the end-to-end media processing pipeline
+6. Begin skeleton implementation of CuratorAgent
