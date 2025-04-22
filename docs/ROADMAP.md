@@ -22,20 +22,21 @@
 ### Phase 2: MediaManager Enhancement & Curator Foundation (Current Focus)
 - ✅ **MediaManager Robustness (Priority)**
   - ✅ File system scanning (`DirectoryInspector` tool implemented)
-  - [ ] Metadata extraction tool refinement/creation (`MetadataExtractor`)
-  - [ ] Embedding generation tool (`EmbeddingGenerator` - e.g., using sentence-transformers)
-  - [ ] Qdrant integration tool (`QdrantUploader`)
-  - [ ] Update MediaManager workflow instructions to use processing tools
-  - [ ] Add necessary dependencies (qdrant-client, sentence-transformers) to requirements.txt
+  - ✅ Core processing utilities refactoring (`processing_utils.py`)
+  - ✅ Environment configuration (venv313 setup and project rules)
+  - [ ] Metadata extraction tool refinement (`MetadataExtractor`)
+  - [ ] Embedding generation tool refinement (`EmbeddingGenerator`)
+  - [ ] Qdrant integration enhancement (`QdrantUploader`)
+  - [ ] Update MediaManager workflow instructions
 - 🔄 **CuratorAgent Foundation**
   - [ ] Initial CuratorAgent implementation skeleton
   - [ ] Design data structures for curated outputs (clusters, galleries)
-  - [ ] *Defer full implementation of Curator tools (Clustering, Gallery Gen, Search, Analytics) until MediaManager pipeline is stable.*
+  - [ ] *Defer full implementation of Curator tools until MediaManager pipeline is stable*
 - [ ] **UI Development (Initial)**
-  - [ ] Implement basic Gradio UI via `agency.run_demo(gradio=True)` for interaction and logging.
+  - [ ] Implement basic Gradio UI via `agency.run_demo(gradio=True)` for interaction and logging
 - [ ] Integration between MediaManager and Curator
   - [ ] Define data flow from MediaManager's storage (Qdrant) to Curator
-- [ ] Enhanced metadata organization (Deferred slightly)
+- [ ] Enhanced metadata organization
   - [ ] Custom metadata fields
   - [ ] Metadata validation
   - [ ] Batch updates
@@ -52,9 +53,9 @@
   - [ ] Interactive filters
   - [ ] Advanced search interface
 - [ ] Performance optimization
-  - Batch processing improvements
-  - Memory usage optimization
-  - Processing queue management
+  - [ ] Batch processing improvements
+  - [ ] Memory usage optimization
+  - [ ] Processing queue management
 
 ### Phase 4: Optimization & Scale (Late Q3/Q4 2024)
 - [ ] Distributed computing support
@@ -64,17 +65,17 @@
 
 ### Phase 5: Advanced Features (Q4 2024 / Q1 2025)
 - [ ] Advanced AI capabilities
-  - Object detection
-  - Face recognition
-  - Scene understanding
+  - [ ] Object detection
+  - [ ] Face recognition
+  - [ ] Scene understanding
 - [ ] Integration capabilities
-  - Cloud storage providers
-  - Social media platforms
-  - Photo management software
+  - [ ] Cloud storage providers
+  - [ ] Social media platforms
+  - [ ] Photo management software
 - [ ] Collaboration features
-  - Multi-user support
-  - Shared collections
-  - Access management
+  - [ ] Multi-user support
+  - [ ] Shared collections
+  - [ ] Access management
 
 ### Phase 6: Future Vision (2025+)
 - [ ] Mobile support
@@ -90,8 +91,8 @@
 - 🔄 User feedback integration
 
 ## Next Steps (Immediate Focus)
-1.  Implement/Refine `MediaManager` tools (`MetadataExtractor`, `EmbeddingGenerator`, `QdrantUploader`).
-2.  Update `MediaManager` instructions & `requirements.txt`.
-3.  Implement basic Gradio UI in `agency.py`.
-4.  Test the data ingestion pipeline (scan -> metadata -> embedding -> Qdrant).
-5.  Begin skeleton implementation of `CuratorAgent`.
+1. Complete MediaManager tools refinement (`MetadataExtractor`, `EmbeddingGenerator`, `QdrantUploader`)
+2. Update MediaManager instructions & requirements.txt
+3. Implement basic Gradio UI in agency.py
+4. Test the end-to-end data ingestion pipeline
+5. Begin skeleton implementation of CuratorAgent
