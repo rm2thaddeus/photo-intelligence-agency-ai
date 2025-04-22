@@ -479,7 +479,135 @@
         "model": "gpt-4.1-nano",
         "name": "MediaManager",
         "object": "assistant",
-        "tools": [],
+        "tools": [
+            {
+                "function": {
+                    "name": "FileSystemScanner",
+                    "description": "Scans a specified directory path for media files (images and videos)\nbased on common file extensions and returns a list of their full paths.\nIt can optionally scan recursively and apply include/exclude patterns.\nResults are limited to stay within OpenAI's API size limits.",
+                    "parameters": {
+                        "properties": {
+                            "directory_path": {
+                                "description": "The absolute or relative path to the directory to scan.",
+                                "title": "Directory Path",
+                                "type": "string"
+                            },
+                            "recursive": {
+                                "default": true,
+                                "description": "Whether to scan subdirectories recursively.",
+                                "title": "Recursive",
+                                "type": "boolean"
+                            },
+                            "include_patterns": {
+                                "default": null,
+                                "description": "Optional list of glob patterns to include files. If None, all media files are considered.",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "Include Patterns",
+                                "type": "array"
+                            },
+                            "exclude_patterns": {
+                                "default": null,
+                                "description": "Optional list of glob patterns to exclude files or directories.",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "Exclude Patterns",
+                                "type": "array"
+                            },
+                            "max_files": {
+                                "default": 100,
+                                "description": "Maximum number of files to return in the results.",
+                                "title": "Max Files",
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "directory_path"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            },
+            {
+                "function": {
+                    "name": "ImageProcessor",
+                    "description": "Processes multiple images from a directory or list of paths:\n- Handles various image formats (JPEG, PNG, RAW/DNG)\n- Extracts comprehensive metadata\n- Generates CLIP embeddings\n- Stores data in Qdrant vector database\nRequires initialized CLIP model and Qdrant client from processing_utils.",
+                    "parameters": {
+                        "properties": {
+                            "input_paths": {
+                                "description": "List of image file paths or directories to process",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "Input Paths",
+                                "type": "array"
+                            },
+                            "batch_size": {
+                                "default": 32,
+                                "description": "Batch size for processing images (adjust based on available GPU memory)",
+                                "title": "Batch Size",
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "input_paths"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            },
+            {
+                "function": {
+                    "name": "VideoProcessor",
+                    "description": "Processes a single video file: extracts metadata using FFmpeg, detects scenes\nusing PySceneDetect, generates CLIP embeddings (using CUDA) for each scene.\nCreates a structured output directory containing frames, metadata, and scene information.\nRequires FFmpeg and CUDA-enabled environment.",
+                    "parameters": {
+                        "properties": {
+                            "video_path": {
+                                "description": "The absolute path to the video file to be processed.",
+                                "title": "Video Path",
+                                "type": "string"
+                            },
+                            "output_dir": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "default": null,
+                                "description": "Directory to store output files (frames, metadata, etc.). If None, creates one based on video name.",
+                                "title": "Output Dir"
+                            },
+                            "scene_detection_threshold": {
+                                "default": 27,
+                                "description": "Threshold for PySceneDetect's ContentDetector (lower means more sensitive).",
+                                "title": "Scene Detection Threshold",
+                                "type": "number"
+                            },
+                            "save_frames": {
+                                "default": true,
+                                "description": "Whether to save extracted frames to disk.",
+                                "title": "Save Frames",
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "video_path"
+                        ],
+                        "type": "object"
+                    },
+                    "strict": false
+                },
+                "type": "function"
+            }
+        ],
         "response_format": "auto",
         "temperature": 0.3,
         "tool_resources": {
