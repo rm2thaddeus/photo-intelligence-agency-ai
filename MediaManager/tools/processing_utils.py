@@ -3,7 +3,7 @@ import os
 import torch
 from transformers import CLIPProcessor, CLIPModel
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.models import Distance, VectorParams, PointStruct
 from qdrant_client.http.exceptions import UnexpectedResponse
 import time
 from dotenv import load_dotenv
@@ -47,9 +47,13 @@ except Exception as e:
 
 # Initialize Qdrant client
 try:
+    # Get host and port from environment variables with defaults
+    qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+    qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
+    
     qdrant_client = QdrantClient(
-        host="localhost",
-        port=6333,
+        host=qdrant_host,
+        port=qdrant_port,
         timeout=5.0
     )
     
@@ -58,6 +62,7 @@ try:
         # Check if collection exists, create if it doesn't
         try:
             qdrant_client.get_collection(QDRANT_COLLECTION_NAME)
+            logger.info(f"Connected to existing Qdrant collection: {QDRANT_COLLECTION_NAME}")
         except UnexpectedResponse:
             # Collection doesn't exist, create it
             qdrant_client.create_collection(
@@ -67,10 +72,29 @@ try:
                     distance=Distance.COSINE
                 )
             )
-            logger.info(f"Created Qdrant collection: {QDRANT_COLLECTION_NAME}")
+            logger.info(f"Created new Qdrant collection: {QDRANT_COLLECTION_NAME}")
     else:
         logger.error("Failed to connect to Qdrant")
         qdrant_client = None
 except Exception as e:
     logger.error(f"Error initializing Qdrant client: {e}")
-    qdrant_client = None 
+    qdrant_client = None
+
+# Add a test function for verifying the processing_utils module
+def test_processing_utils():
+    """Test function to verify processing_utils functionality"""
+    if model is None or processor is None:
+        logger.error("CLIP model or processor not initialized")
+        return False
+    
+    if qdrant_client is None:
+        logger.error("Qdrant client not initialized")
+        return False
+    
+    logger.info(f"Processing utils initialized successfully - Device: {DEVICE}")
+    return True
+
+# If this file is run directly, execute the test function
+if __name__ == "__main__":
+    result = test_processing_utils()
+    print(f"Processing utils test: {'PASSED' if result else 'FAILED'}") 
