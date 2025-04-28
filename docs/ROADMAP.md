@@ -30,9 +30,10 @@
     - 🔄 Better progress reporting and logging
   - ✅ Update MediaManager workflow instructions *(Instructions updated: improved request recognition, robust batch/error handling, and process documentation now aligned with current toolset and roadmap)*
 - 🔄 **CuratorAgent Foundation**
-  - [ ] Initial CuratorAgent implementation skeleton
-  - [ ] Design data structures for curated outputs (clusters, galleries)
-  - [ ] *Defer full implementation of Curator tools until MediaManager pipeline is stable*
+  - ✅ Initial CuratorAgent implementation skeleton
+  - ✅ Design data structures for curated outputs (clusters, galleries) *(handled within tools)*
+  - ✅ Core Curator tools implemented (QdrantFetcherTool, ClusterTool, SummaryWriterTool, HTMLGalleryWriterTool)
+  - [ ] Further integration with MediaManager and UI pending
 - [ ] **UI Development (Initial)**
   - [ ] Implement basic Gradio UI via `agency.run_demo(gradio=True)` for interaction and logging
 - [ ] Integration between MediaManager and Curator
