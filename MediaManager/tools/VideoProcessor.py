@@ -92,10 +92,10 @@ class VideoMetadata:
 
 class VideoProcessor(BaseTool):
     """
-    Processes a single video file: extracts metadata using FFmpeg, detects scenes
-    using PySceneDetect, generates CLIP embeddings (using CUDA) for each scene.
-    Creates a structured output directory containing frames, metadata, and scene information.
-    Requires FFmpeg and CUDA-enabled environment.
+    Creates and manages the video database in Qdrant:
+    - Processes a single video file: extracts metadata using FFmpeg, detects scenes using PySceneDetect, generates CLIP embeddings (using CUDA) for each scene
+    - Stores and updates video data in the Qdrant vector database, creating the video database if it does not exist
+    This tool is responsible for initializing, populating, and updating the video database as needed. Requires FFmpeg and CUDA-enabled environment.
     """
     video_path: str = Field(
         ...,

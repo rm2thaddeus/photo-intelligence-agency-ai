@@ -1,4 +1,9 @@
-# Core Dependencies
+# Python 3.9 compatible requirements (see comments for version notes)
+# torch==2.0.1 is the last version supporting Python 3.9
+# transformers==4.29.2 is the last version supporting Python 3.9
+# qdrant-client==1.6.4 is Python 3.9 compatible
+# If you need newer features, upgrade Python to 3.10+
+
 agency-swarm>=0.1.0
 python-dotenv>=1.0.0
 pydantic>=2.5.0
@@ -6,54 +11,51 @@ fastapi>=0.109.0
 uvicorn>=0.27.0
 
 # Vector Database
-qdrant-client>=1.7.0
+qdrant-client==1.6.4
 
 # Media Processing
-Pillow>=9.0.0
-rawpy>=0.19.0
-ffmpeg-python>=0.2.0
+Pillow==9.5.0
+rawpy==0.19.6
+ffmpeg-python==0.2.0
 
 # Machine Learning & Embeddings
-torch>=2.0.0
-transformers>=4.30.0
+torch==2.0.1
+transformers==4.29.2
 openai>=1.0.0
-sentence-transformers>=2.2.2
+sentence-transformers==2.2.2
 clip @ git+https://github.com/openai/CLIP.git
 
 # Clustering
-hdbscan>=0.8.33
-scikit-learn>=1.3.0
-numpy>=1.24.0
-pandas>=2.0.0
+hdbscan==0.8.33
+scikit-learn==1.2.2
+numpy==1.24.4
+pandas==2.0.3
 
 # Web & HTML Generation
-jinja2>=3.1.0
-aiohttp>=3.9.0
+jinja2==3.1.2
+aiohttp==3.9.3
 
 # Development Tools
-pytest>=7.4.0
-black>=23.12.0
-isort>=5.13.0
-flake8>=7.0.0
-mypy>=1.8.0
+pytest==7.4.4
+black==23.12.1
+isort==5.13.2
+flake8==7.0.0
+mypy==1.8.0
 
 # Monitoring & Logging
-prometheus-client>=0.19.0
-python-json-logger>=2.0.0
+prometheus-client==0.19.0
+python-json-logger==2.0.7
 
 # Security
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-python-multipart>=0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
 
 # MediaManager Tools Dependencies
-PySceneDetect>=0.6.2
-opencv-python-headless
+PySceneDetect==0.6.2
+opencv-python-headless==4.7.0.72
 
-# Potentially needed by CLIP or other models
-tokenizers
-ftfy
-regex
-
-# UI Dependency (if using Gradio)
-gradio>=4.0.0
+tokenizers==0.13.3
+ftfy==6.1.1
+regex==2023.6.3
+gradio==4.0.0

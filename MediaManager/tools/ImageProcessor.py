@@ -23,12 +23,12 @@ from .processing_utils import (
 
 class ImageProcessor(BaseTool):
     """
-    Processes multiple images from a directory or list of paths:
+    Creates and manages the image database in Qdrant:
     - Handles various image formats (JPEG, PNG, RAW/DNG)
     - Extracts comprehensive metadata
     - Generates CLIP embeddings
-    - Stores data in Qdrant vector database
-    Requires initialized CLIP model and Qdrant client from processing_utils.
+    - Stores and updates image data in the Qdrant vector database, creating the image database if it does not exist
+    This tool is responsible for initializing, populating, and updating the image database as needed. Requires initialized CLIP model and Qdrant client from processing_utils.
     """
     
     input_paths: List[str] = Field(
