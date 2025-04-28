@@ -28,7 +28,7 @@
     - 🔄 Enhance error handling and recovery
     - 🔄 Improve batch processing capabilities
     - 🔄 Better progress reporting and logging
-  - [ ] Update MediaManager workflow instructions
+  - ✅ Update MediaManager workflow instructions *(Instructions updated: improved request recognition, robust batch/error handling, and process documentation now aligned with current toolset and roadmap)*
 - 🔄 **CuratorAgent Foundation**
   - [ ] Initial CuratorAgent implementation skeleton
   - [ ] Design data structures for curated outputs (clusters, galleries)
@@ -85,7 +85,7 @@
 - [ ] Plugin architecture
 
 ## Ongoing Priorities
-- 🔄 Documentation maintenance
+- 🔄 Documentation maintenance *(MediaManager workflow instructions now robust and up to date)*
 - 🔄 Code quality and testing
 - 🔄 Performance monitoring
 - 🔄 Security updates
@@ -94,7 +94,7 @@
 ## Next Steps (Immediate Focus)
 1. Enhance existing processors (`ImageProcessor`, `VideoProcessor`) with improved error handling and batch capabilities
 2. Ensure consistent data format across processors for seamless Qdrant integration
-3. Update MediaManager instructions for clarity and efficiency
+3. **MediaManager workflow documentation is now robust and aligned with the current toolset and roadmap**
 4. Implement basic Gradio UI in agency.py
 5. Test the end-to-end media processing pipeline
 6. Begin skeleton implementation of CuratorAgent
