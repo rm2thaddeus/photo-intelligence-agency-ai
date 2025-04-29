@@ -115,35 +115,4 @@ class ClusterTool(BaseTool):
             return {
                 "status": "error",
                 "message": str(e)
-            }
-
-# Example test case
-if __name__ == "__main__":
-    # Create test data
-    test_items = [
-        {
-            "id": f"test_{i}",
-            "embedding": np.random.rand(512).tolist(),  # Simulating CLIP embeddings
-            "metadata": {
-                "file_path": f"/path/to/file_{i}",
-                "media_type": "image"
-            }
-        }
-        for i in range(20)
-    ]
-    
-    # Test the tool
-    cluster_tool = ClusterTool(
-        items=test_items,
-        min_cluster_size=3,
-        min_samples=2,
-        output_dir="test_clusters"
-    )
-    
-    result = cluster_tool.run()
-    print("\nClustering Result:")
-    print(f"Status: {result['status']}")
-    if result['status'] == 'success':
-        print(f"Number of clusters: {result['statistics']['num_clusters']}")
-        print(f"Number of noise points: {result['statistics']['noise_points']}")
-        print(f"Results saved to: {result['output_file']}") 
+            } 

@@ -126,43 +126,4 @@ Key Metadata:
             return {
                 "status": "error",
                 "message": str(e)
-            }
-
-# Example test case
-if __name__ == "__main__":
-    # Create test clusters
-    test_clusters = {
-        "0": [
-            {
-                "id": "test_1",
-                "metadata": {
-                    "file_path": "/path/to/beach_1.jpg",
-                    "media_type": "image",
-                    "creation_time": "2024-01-01T12:00:00"
-                }
-            },
-            {
-                "id": "test_2",
-                "metadata": {
-                    "file_path": "/path/to/beach_2.mp4",
-                    "media_type": "video",
-                    "creation_time": "2024-01-01T13:00:00",
-                    "duration": "00:02:30"
-                }
-            }
-        ]
-    }
-    
-    # Test the tool
-    summary_tool = SummaryWriterTool(
-        clusters=test_clusters,
-        output_dir="test_summaries"
-    )
-    
-    result = summary_tool.run()
-    print("\nSummary Generation Result:")
-    print(f"Status: {result['status']}")
-    if result['status'] == 'success':
-        print(f"Number of clusters summarized: {result['statistics']['total_clusters']}")
-        print("\nFirst cluster summary:")
-        print(result['summaries']['0']['summary']) 
+            } 

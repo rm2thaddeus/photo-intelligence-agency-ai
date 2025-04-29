@@ -112,25 +112,4 @@ class QdrantFetcherTool(BaseTool):
             return {
                 "status": "error",
                 "message": str(e)
-            }
-
-# Example test case
-if __name__ == "__main__":
-    # Test the tool
-    fetcher = QdrantFetcherTool(
-        limit=5,
-        media_type="image",
-        date_range={
-            "start": "2024-01-01T00:00:00",
-            "end": "2024-12-31T23:59:59"
-        }
-    )
-    result = fetcher.run()
-    print("\nFetch Result:")
-    print(f"Status: {result['status']}")
-    if result['status'] == 'success':
-        print(f"Total items: {result['total_items']}")
-        print(f"Retrieved items: {len(result['items'])}")
-        if result['items']:
-            print("\nFirst item metadata:")
-            print(result['items'][0]['metadata']) 
+            } 
